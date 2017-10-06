@@ -46,11 +46,17 @@ def compare_with_baseline(btype, fpath, baseline):
         test_result["std_dev_iops"] = float(result["Stddev IOPS"])
         test_result["avg_lat"] = float(result["Average Latency(s)"])
         test_result["std_dev_lat"] = float(result["Stddev Latency(s)"])
+
+    if btype == "librbdfio":
+        test_result["bw"] = float(result["jobs"][0]["write"]["bw_mean"])
+        test_result["std_dev_bw"] = float(result["jobs"][0]["write"]["bw_dev"])
+        test_result["avg_iops"] = float(result["jobs"][0]["write"]["iops_mean"])
+        test_result["std_dev_iops"] = float(result["jobs"][0]["write"]["iops_stddev"])
+        test_result["avg_lat"] = float(result["jobs"][0]["write"]["lat_ns"]["mean"])
+        test_result["std_dev_lat"] = float(result["jobs"][0]["write"]["lat_ns"]["stddev"])
+
     logger.info('Baseline values: %s', baseline)
     logger.info('Test Values: %s', test_result)
-    if btype == "librbdfio":
-        pass
-
     ret = compare_parameters(test_result, baseline)
     return ret
 
@@ -66,8 +72,9 @@ def main(argv):
     clients = parameters["cluster"]["clients"]
     if btype == "radosbench":
         instances = parameters["benchmarks"][btype]["concurrent_procs"]
+        logger.info('concurrent %s', instances)
     elif btype == "librbdfio":
-        instances = parameters["benchmarks"]["volumes_per_client"]
+        instances = parameters["benchmarks"][btype]["volumes_per_client"][0]
     result_files =  generate_result_files(clients, instances)
     ret_vals = {}
     for iteration in range(iterations):
