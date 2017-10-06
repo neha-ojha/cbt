@@ -15,12 +15,13 @@ from log_support import setup_loggers
 
 logger = logging.getLogger("cbt")
 
-def get_result_files(dir_path):
-    fnames = []
-    for fname in os.listdir(dir_path):
-        if "json_" in fname:
-            fnames.append(fname)
-    return fnames
+def generate_result_files(clients, instances):
+    result_files = []
+    for client in clients:
+        for i in xrange(instances):
+            json_out_file = 'json_output.%s.%s' % (i, client)
+            result_files.append(json_out_file)
+    return result_files
 
 def compare_parameters(test, baseline):
     ret = 0
@@ -62,15 +63,20 @@ def main(argv):
     iterations = parameters["cluster"]["iterations"]
     btype = parameters["benchmarks"].keys()[0]
     logger.info('Starting Peformance Tests for %s', btype)
+    clients = parameters["cluster"]["clients"]
+    if btype == "radosbench":
+        instances = parameters["benchmarks"][btype]["concurrent_procs"]
+    elif btype == "librbdfio":
+        instances = parameters["benchmarks"]["volumes_per_client"]
+    result_files =  generate_result_files(clients, instances)
     ret_vals = {}
     for iteration in range(iterations):
         logger.info('Iteration: %d', iteration)
         cbt_dir_path = os.path.join(results, '%08d' % iteration)
-        result_files = get_result_files(cbt_dir_path)
         failed_test = []
         for fname in result_files:
             ret = 0
-            logger.info('Running performance test for: %s', fname)
+            logger.info('Running performance test on: %s', fname)
             fpath = os.path.join(cbt_dir_path, fname)
             ret = compare_with_baseline(btype, fpath, parameters["baseline"])
             if ret != 0:
