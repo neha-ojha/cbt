@@ -47,6 +47,7 @@ def compare_with_baseline(btype, fpath, baseline):
         test_result["avg_lat"] = float(result["Average Latency(s)"])
         test_result["std_dev_lat"] = float(result["Stddev Latency(s)"])
 
+    # default bw seems to be KiB/s, default lat ns
     if btype == "librbdfio":
         test_result["bw"] = float(result["jobs"][0]["write"]["bw_mean"])
         test_result["std_dev_bw"] = float(result["jobs"][0]["write"]["bw_dev"])
@@ -55,8 +56,12 @@ def compare_with_baseline(btype, fpath, baseline):
         test_result["avg_lat"] = float(result["jobs"][0]["write"]["lat_ns"]["mean"])
         test_result["std_dev_lat"] = float(result["jobs"][0]["write"]["lat_ns"]["stddev"])
 
-    logger.info('Baseline values: %s', baseline)
-    logger.info('Test Values: %s', test_result)
+    logger.info("Baseline values:\n    %s",
+                 pprint.pformat(baseline).replace("\n", "\n    "))
+
+    logger.info("Test values:\n    %s",
+                 pprint.pformat(test_result).replace("\n", "\n    "))
+
     ret = compare_parameters(test_result, baseline)
     return ret
 
