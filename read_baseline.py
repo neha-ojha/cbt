@@ -74,10 +74,11 @@ def main(argv):
     iterations = parameters["cluster"]["iterations"]
     btype = parameters["benchmarks"].keys()[0]
     logger.info('Starting Peformance Tests for %s', btype)
+    if not parameters["baseline"]:
+        raise Exception('Performance test failed: no baseline parameters provided')
     clients = parameters["cluster"]["clients"]
     if btype == "radosbench":
         instances = parameters["benchmarks"][btype]["concurrent_procs"]
-        logger.info('concurrent %s', instances)
     elif btype == "librbdfio":
         instances = parameters["benchmarks"][btype]["volumes_per_client"][0]
     result_files =  generate_result_files(clients, instances)
