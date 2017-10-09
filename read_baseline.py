@@ -43,14 +43,14 @@ def compare_with_baseline(btype, fpath, baseline):
         test_result["avg_lat"] = float(result["Average Latency(s)"])
         test_result["std_dev_lat"] = float(result["Stddev Latency(s)"])
 
-    # default bw KiB/s and default ns
+    # default bw KiB/s and default ns, we convert it to MB/sec and sec
     if btype == "librbdfio":
-        test_result["bw"] = float(result["jobs"][0]["write"]["bw_mean"])
-        test_result["std_dev_bw"] = float(result["jobs"][0]["write"]["bw_dev"])
+        test_result["bw"] = float(result["jobs"][0]["write"]["bw_mean"]) * 0.001024
+        test_result["std_dev_bw"] = float(result["jobs"][0]["write"]["bw_dev"]) * 0.001024
         test_result["avg_iops"] = float(result["jobs"][0]["write"]["iops_mean"])
         test_result["std_dev_iops"] = float(result["jobs"][0]["write"]["iops_stddev"])
-        test_result["avg_lat"] = float(result["jobs"][0]["write"]["lat_ns"]["mean"])
-        test_result["std_dev_lat"] = float(result["jobs"][0]["write"]["lat_ns"]["stddev"])
+        test_result["avg_lat"] = float(result["jobs"][0]["write"]["lat_ns"]["mean"]) / (10**9)
+        test_result["std_dev_lat"] = float(result["jobs"][0]["write"]["lat_ns"]["stddev"]) / (10**9)
 
     logger.info("Baseline values:\n    %s",
                  pprint.pformat(baseline).replace("\n", "\n    "))
