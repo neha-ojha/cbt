@@ -1,6 +1,4 @@
 #!/usr/bin/python
-import argparse
-import collections
 import logging
 import pprint
 import os
@@ -8,9 +6,6 @@ import sys
 import yaml
 import json
 
-import settings
-import benchmarkfactory
-from cluster.ceph import Ceph
 from log_support import setup_loggers
 
 logger = logging.getLogger("cbt")
@@ -39,6 +34,7 @@ def compare_with_baseline(btype, fpath, baseline):
     test_result = {}
     with open(fpath) as fd:
         result = json.load(fd)
+    # default bw MB/sec and lat sec
     if btype == "radosbench":
         test_result["bw"] = float(result["Bandwidth (MB/sec)"])
         test_result["std_dev_bw"] = float(result["Stddev Bandwidth"])
@@ -47,7 +43,7 @@ def compare_with_baseline(btype, fpath, baseline):
         test_result["avg_lat"] = float(result["Average Latency(s)"])
         test_result["std_dev_lat"] = float(result["Stddev Latency(s)"])
 
-    # default bw seems to be KiB/s, default lat ns
+    # default bw KiB/s and default ns
     if btype == "librbdfio":
         test_result["bw"] = float(result["jobs"][0]["write"]["bw_mean"])
         test_result["std_dev_bw"] = float(result["jobs"][0]["write"]["bw_dev"])
@@ -71,11 +67,12 @@ def main(argv):
     results = sys.argv[2]
     with open(config) as fd:
         parameters = yaml.load(fd)
-    iterations = parameters["cluster"]["iterations"]
     btype = parameters["benchmarks"].keys()[0]
     logger.info('Starting Peformance Tests for %s', btype)
     if not parameters["baseline"]:
         raise Exception('Performance test failed: no baseline parameters provided')
+
+    iterations = parameters["cluster"]["iterations"]
     clients = parameters["cluster"]["clients"]
     if btype == "radosbench":
         instances = parameters["benchmarks"][btype]["concurrent_procs"]
