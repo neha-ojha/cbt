@@ -87,7 +87,10 @@ def main(argv):
         for fname in result_files:
             ret = 0
             logger.info('Running performance test on: %s', fname)
-            fpath = os.path.join(cbt_dir_path, fname)
+            if btype == "radosbench":
+                fpath = os.path.join(cbt_dir_path, 'write', fname)
+            else:
+                fpath = os.path.join(cbt_dir_path, fname)
             ret = compare_with_baseline(btype, fpath, parameters["baseline"])
             if ret != 0:
                 failed_test.append(fname)
