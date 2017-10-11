@@ -34,7 +34,7 @@ def compare_parameters(btype, test, baseline):
             logger.info('%s test passed', key)
     return ret 
 
-def compare_with_baseline(btype, fpath, baseline):
+def compare_with_baseline(btype, test_mode, fpath, baseline):
     ret = 0
     test_result = {}
     with open(fpath) as fd:
@@ -50,11 +50,15 @@ def compare_with_baseline(btype, fpath, baseline):
 
     # default bw KiB/s and default ns, we convert it to MB/sec and sec
     if btype == "librbdfio":
-        test_result["bw"] = float(result["jobs"][0]["write"]["bw"]) * 0.001024
-        test_result["avg_iops"] = float(result["jobs"][0]["write"]["iops_mean"])
-        test_result["std_dev_iops"] = float(result["jobs"][0]["write"]["iops_stddev"])
-        test_result["avg_lat"] = float(result["jobs"][0]["write"]["lat_ns"]["mean"]) / (10**9)
-        test_result["std_dev_lat"] = float(result["jobs"][0]["write"]["lat_ns"]["stddev"]) / (10**9)
+        if test_mode[0] in ['read', 'randread']:
+            mode = 'read'
+        if test_mode[0] in ['write', 'randwrite']:
+            mode = 'write'
+        test_result["bw"] = float(result["jobs"][0][mode]["bw"]) * 0.001024
+        test_result["avg_iops"] = float(result["jobs"][0][mode]["iops_mean"])
+        test_result["std_dev_iops"] = float(result["jobs"][0][mode]["iops_stddev"])
+        test_result["avg_lat"] = float(result["jobs"][0][mode]["lat_ns"]["mean"]) / (10**9)
+        test_result["std_dev_lat"] = float(result["jobs"][0][mode]["lat_ns"]["stddev"]) / (10**9)
 
     logger.info("Baseline values:\n    %s",
                  pprint.pformat(baseline).replace("\n", "\n    "))
@@ -82,6 +86,7 @@ def main(argv):
         instances = parameters["benchmarks"][btype]["concurrent_procs"]
     elif btype == "librbdfio":
         instances = parameters["benchmarks"][btype]["volumes_per_client"][0]
+        mode = parameters["benchmarks"][btype]["mode"]
     result_files =  generate_result_files(clients, instances)
     ret_vals = {}
     for iteration in range(iterations):
@@ -95,7 +100,7 @@ def main(argv):
                 fpath = os.path.join(cbt_dir_path, 'write', fname)
             else:
                 fpath = os.path.join(cbt_dir_path, fname)
-            ret = compare_with_baseline(btype, fpath, parameters["baseline"])
+            ret = compare_with_baseline(btype, mode, fpath, parameters["baseline"])
             if ret != 0:
                 failed_test.append(fname)
         ret_vals[iteration] = failed_test
