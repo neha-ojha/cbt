@@ -18,13 +18,17 @@ def generate_result_files(clients, instances):
             result_files.append(json_out_file)
     return result_files
 
-def compare_parameters(btype, test, baseline):
+def compare_parameters(btype, mode, mode1, test, baseline):
     ret = 0
     if btype == "librbdfio":
         params = ["bw", "avg_iops", "std_dev_iops", "avg_lat", "std_dev_lat"]
     else:
         params = ["bw", "std_dev_bw", "avg_iops", "std_dev_iops", "avg_lat",
                   "std_dev_lat"]
+    # this is only for the rw case
+    if mode1:
+        params.extend(["read_bw", "read_avg_iops", "read_std_dev_iops",
+                       "read_avg_lat", "read_std_dev_lat"])
 
     for key in params:
         if test[key] < baseline[key] / 2:
@@ -36,6 +40,8 @@ def compare_parameters(btype, test, baseline):
 
 def compare_with_baseline(btype, test_mode, fpath, baseline):
     ret = 0
+    mode = ""
+    mode1 = ""
     test_result = {}
     with open(fpath) as fd:
         result = json.load(fd)
@@ -54,11 +60,22 @@ def compare_with_baseline(btype, test_mode, fpath, baseline):
             mode = 'read'
         if test_mode[0] in ['write', 'randwrite']:
             mode = 'write'
+        if test_mode[0] in ['rw', 'randrw']:
+            mode = 'write'
+            mode1 = 'read'
         test_result["bw"] = float(result["jobs"][0][mode]["bw"]) * 0.001024
         test_result["avg_iops"] = float(result["jobs"][0][mode]["iops_mean"])
         test_result["std_dev_iops"] = float(result["jobs"][0][mode]["iops_stddev"])
         test_result["avg_lat"] = float(result["jobs"][0][mode]["lat_ns"]["mean"]) / (10**9)
         test_result["std_dev_lat"] = float(result["jobs"][0][mode]["lat_ns"]["stddev"]) / (10**9)
+
+        if mode1:
+            test_result["read_bw"] = float(result["jobs"][0][mode1]["bw"]) * 0.001024
+            test_result["read_avg_iops"] = float(result["jobs"][0][mode1]["iops_mean"])
+            test_result["read_std_dev_iops"] = float(result["jobs"][0][mode1]["iops_stddev"])
+            test_result["read_avg_lat"] = float(result["jobs"][0][mode1]["lat_ns"]["mean"]) / (10**9)
+            test_result["read_std_dev_lat"] = float(result["jobs"][0][mode1]["lat_ns"]["stddev"]) / (10**9)
+
 
     logger.info("Baseline values:\n    %s",
                  pprint.pformat(baseline).replace("\n", "\n    "))
@@ -66,7 +83,7 @@ def compare_with_baseline(btype, test_mode, fpath, baseline):
     logger.info("Test values:\n    %s",
                  pprint.pformat(test_result).replace("\n", "\n    "))
 
-    ret = compare_parameters(btype, test_result, baseline)
+    ret = compare_parameters(btype, mode, mode1, test_result, baseline)
     return ret
 
 def main(argv):
@@ -82,11 +99,17 @@ def main(argv):
 
     iterations = parameters["cluster"]["iterations"]
     clients = parameters["cluster"]["clients"]
+
     if btype == "radosbench":
         instances = parameters["benchmarks"][btype]["concurrent_procs"]
+        if parameters["benchmarks"][btype]["write_only"]:
+            mode = 'write'
+        else:
+            mode = 'rw'
     elif btype == "librbdfio":
         instances = parameters["benchmarks"][btype]["volumes_per_client"][0]
         mode = parameters["benchmarks"][btype]["mode"]
+    logger.info('Test Mode: %s', mode)
     result_files =  generate_result_files(clients, instances)
     ret_vals = {}
     for iteration in range(iterations):
