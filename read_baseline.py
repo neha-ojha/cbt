@@ -18,11 +18,16 @@ def generate_result_files(clients, instances):
             result_files.append(json_out_file)
     return result_files
 
-def compare_parameters(test, baseline):
+def compare_parameters(btype, test, baseline):
     ret = 0
-    for key in ["bw", "std_dev_bw", "avg_iops", "std_dev_iops", "avg_lat",
-                "std_dev_lat"]:
-        if test[key] < baseline[key]/10:
+    if btype == "librbdfio":
+        params = ["bw", "avg_iops", "std_dev_iops", "avg_lat", "std_dev_lat"]
+    else:
+        params = ["bw", "std_dev_bw", "avg_iops", "std_dev_iops", "avg_lat",
+                  "std_dev_lat"]
+
+    for key in params:
+        if test[key] < baseline[key] / 2:
             ret = 1
             logger.info('%s test failed', key)
         else:
@@ -45,8 +50,7 @@ def compare_with_baseline(btype, fpath, baseline):
 
     # default bw KiB/s and default ns, we convert it to MB/sec and sec
     if btype == "librbdfio":
-        test_result["bw"] = float(result["jobs"][0]["write"]["bw_mean"]) * 0.001024
-        test_result["std_dev_bw"] = float(result["jobs"][0]["write"]["bw_dev"]) * 0.001024
+        test_result["bw"] = float(result["jobs"][0]["write"]["bw"]) * 0.001024
         test_result["avg_iops"] = float(result["jobs"][0]["write"]["iops_mean"])
         test_result["std_dev_iops"] = float(result["jobs"][0]["write"]["iops_stddev"])
         test_result["avg_lat"] = float(result["jobs"][0]["write"]["lat_ns"]["mean"]) / (10**9)
@@ -58,7 +62,7 @@ def compare_with_baseline(btype, fpath, baseline):
     logger.info("Test values:\n    %s",
                  pprint.pformat(test_result).replace("\n", "\n    "))
 
-    ret = compare_parameters(test_result, baseline)
+    ret = compare_parameters(btype, test_result, baseline)
     return ret
 
 def main(argv):
