@@ -13,11 +13,13 @@ logger = logging.getLogger("cbt")
 def generate_result_files(dir_path, clients, instances):
     result_files = []
     for fname in os.listdir(dir_path):
-        if os.path.isdir(fname):
+        if os.path.isdir(os.path.join(dir_path, fname)):
             for client in clients:
                 for i in xrange(instances):
                     json_out_file = '%s/json_output.%s.%s' % (fname, i, client)
                     result_files.append(json_out_file)
+    if len(result_files) == 0:
+        raise Exception('Performance test failed: no result files found')
     return result_files
 
 def compare_parameters(btype, mode, mode1, test, baseline):
