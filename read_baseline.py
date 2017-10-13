@@ -10,13 +10,16 @@ from log_support import setup_loggers
 
 logger = logging.getLogger("cbt")
 
-def generate_result_files(dir_path, clients, instances):
+def generate_result_files(dir_path, clients, instances, mode, btype):
     result_files = []
     for fname in os.listdir(dir_path):
         if os.path.isdir(os.path.join(dir_path, fname)):
             for client in clients:
                 for i in xrange(instances):
-                    json_out_file = '%s/json_output.%s.%s' % (fname, i, client)
+                    if btype == "radosbench":
+                        json_out_file = '%s/%s/json_output.%s.%s' % (fname, mode, i, client)
+                    else:
+                        json_out_file = '%s/json_output.%s.%s' % (fname, i, client)
                     result_files.append(json_out_file)
     if len(result_files) == 0:
         raise Exception('Performance test failed: no result files found')
@@ -109,10 +112,10 @@ def main(argv):
         if parameters["benchmarks"][btype]["write_only"]:
             mode = 'write'
         else:
-            if not parameters["benchmarks"][btype]["readmode"]:
-                mode = 'seq'
-            else:
+            if "readmode" in parameters["benchmarks"][btype].keys():
                 mode = parameters["benchmarks"][btype]["readmode"]
+            else:
+                mode = 'seq'
     elif btype == "librbdfio":
         instances = parameters["benchmarks"][btype]["volumes_per_client"][0]
         mode = parameters["benchmarks"][btype]["mode"]
@@ -122,15 +125,12 @@ def main(argv):
     for iteration in range(iterations):
         logger.info('Iteration: %d', iteration)
         cbt_dir_path = os.path.join(results, 'results', '%08d' % iteration)
-        result_files =  generate_result_files(cbt_dir_path, clients, instances)
+        result_files =  generate_result_files(cbt_dir_path, clients, instances, mode, btype)
         failed_test = []
         for fname in result_files:
             ret = 0
             logger.info('Running performance test on: %s', fname)
-            if btype == "radosbench":
-                fpath = os.path.join(cbt_dir_path, 'write', fname)
-            else:
-                fpath = os.path.join(cbt_dir_path, fname)
+            fpath = os.path.join(cbt_dir_path, fname)
             ret = compare_with_baseline(btype, mode, fpath, parameters["baseline"])
             if ret != 0:
                 failed_test.append(fname)
