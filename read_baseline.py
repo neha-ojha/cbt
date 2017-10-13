@@ -30,8 +30,12 @@ def compare_parameters(btype, mode, mode1, test, baseline):
     if btype == "librbdfio":
         params = ["bw", "avg_iops", "std_dev_iops", "avg_lat", "std_dev_lat"]
     else:
-        params = ["bw", "std_dev_bw", "avg_iops", "std_dev_iops", "avg_lat",
-                  "std_dev_lat"]
+        if mode == "write":
+            params = ["bw", "std_dev_bw", "avg_iops", "std_dev_iops", "avg_lat",
+                      "std_dev_lat"]
+        else:
+            params = ["bw", "avg_iops", "std_dev_iops", "avg_lat"]
+
     # this is only for the rw case
     if mode1:
         params.extend(["read_bw", "read_avg_iops", "read_std_dev_iops",
@@ -55,11 +59,12 @@ def compare_with_baseline(btype, test_mode, fpath, baseline):
     # default bw MB/sec and lat sec
     if btype == "radosbench":
         test_result["bw"] = float(result["Bandwidth (MB/sec)"])
-        test_result["std_dev_bw"] = float(result["Stddev Bandwidth"])
         test_result["avg_iops"] = float(result["Average IOPS"])
         test_result["std_dev_iops"] = float(result["Stddev IOPS"])
         test_result["avg_lat"] = float(result["Average Latency(s)"])
-        test_result["std_dev_lat"] = float(result["Stddev Latency(s)"])
+        if test_mode == 'write':
+            test_result["std_dev_bw"] = float(result["Stddev Bandwidth"])
+            test_result["std_dev_lat"] = float(result["Stddev Latency(s)"])
 
     # default bw KiB/s and default ns, we convert it to MB/sec and sec
     if btype == "librbdfio":
