@@ -10,12 +10,14 @@ from log_support import setup_loggers
 
 logger = logging.getLogger("cbt")
 
-def generate_result_files(clients, instances):
+def generate_result_files(dir_path, clients, instances):
     result_files = []
-    for client in clients:
-        for i in xrange(instances):
-            json_out_file = 'json_output.%s.%s' % (i, client)
-            result_files.append(json_out_file)
+    for fname in os.listdir(dir_path):
+        if os.path.isdir(fname):
+            for client in clients:
+                for i in xrange(instances):
+                    json_out_file = '%s/json_output.%s.%s' % (fname, i, client)
+                    result_files.append(json_out_file)
     return result_files
 
 def compare_parameters(btype, mode, mode1, test, baseline):
@@ -105,16 +107,20 @@ def main(argv):
         if parameters["benchmarks"][btype]["write_only"]:
             mode = 'write'
         else:
-            mode = 'rw'
+            if not parameters["benchmarks"][btype]["readmode"]:
+                mode = 'seq'
+            else:
+                mode = parameters["benchmarks"][btype]["readmode"]
     elif btype == "librbdfio":
         instances = parameters["benchmarks"][btype]["volumes_per_client"][0]
         mode = parameters["benchmarks"][btype]["mode"]
+
     logger.info('Test Mode: %s', mode)
-    result_files =  generate_result_files(clients, instances)
     ret_vals = {}
     for iteration in range(iterations):
         logger.info('Iteration: %d', iteration)
-        cbt_dir_path = os.path.join(results, '%08d' % iteration)
+        cbt_dir_path = os.path.join(results, 'results', '%08d' % iteration)
+        result_files =  generate_result_files(cbt_dir_path, clients, instances)
         failed_test = []
         for fname in result_files:
             ret = 0
