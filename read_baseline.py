@@ -36,7 +36,7 @@ def compare_parameters(btype, mode, mode1, test, baseline):
         else:
             params = ["bw", "avg_iops", "std_dev_iops", "avg_lat"]
 
-    # this is only for the rw case
+    # this is only for the fio rw case
     if mode1:
         params.extend(["read_bw", "read_avg_iops", "read_std_dev_iops",
                        "read_avg_lat", "read_std_dev_lat"])
@@ -52,16 +52,20 @@ def compare_parameters(btype, mode, mode1, test, baseline):
 def compare_with_baseline(btype, test_mode, fpath, baseline):
     ret = 0
     mode = ""
-    mode1 = ""
+    mode1 = "" # only required for fio rw case
     test_result = {}
+
+    # read test results
     with open(fpath) as fd:
         result = json.load(fd)
+
     # default bw MB/sec and lat sec
     if btype == "radosbench":
         test_result["bw"] = float(result["Bandwidth (MB/sec)"])
         test_result["avg_iops"] = float(result["Average IOPS"])
         test_result["std_dev_iops"] = float(result["Stddev IOPS"])
         test_result["avg_lat"] = float(result["Average Latency(s)"])
+        # radosbench read does not have the following parameters
         if test_mode == 'write':
             test_result["std_dev_bw"] = float(result["Stddev Bandwidth"])
             test_result["std_dev_lat"] = float(result["Stddev Latency(s)"])
@@ -102,19 +106,28 @@ def main(argv):
     setup_loggers()
     config = sys.argv[1]
     results = sys.argv[2]
+    if len(sys.argv) > 3:
+       raise Exception('Performance test failed: too many parameters')
+    if not config.endswith(".yaml"):
+        raise Exception('Performance test failed: config parameters not provided '
+                        'in YAML format')
     with open(config) as fd:
         parameters = yaml.load(fd)
-    btype = parameters["benchmarks"].keys()[0]
+    benchmarks = parameters.get("benchmarks", "")
+    if not benchmarks:
+       raise Exception('Performance test failed: no benchmark provided')
+    btype = benchmarks.keys()[0]
     logger.info('Starting Peformance Tests for %s', btype)
-    if not parameters["baseline"]:
+    if "baseline" not in parameters.keys():
         raise Exception('Performance test failed: no baseline parameters provided')
 
     iterations = parameters["cluster"]["iterations"]
     clients = parameters["cluster"]["clients"]
 
     if btype == "radosbench":
-        instances = parameters["benchmarks"][btype]["concurrent_procs"]
-        if parameters["benchmarks"][btype]["write_only"]:
+        instances = parameters.get('benchmarks').get(btype).get('concurrent_procs', 1)
+        write_only = parameters.get('benchmarks').get(btype).get('write_only', True)
+        if write_only:
             mode = 'write'
         else:
             if "readmode" in parameters["benchmarks"][btype].keys():
@@ -122,10 +135,10 @@ def main(argv):
             else:
                 mode = 'seq'
     elif btype == "librbdfio":
-        instances = parameters["benchmarks"][btype]["volumes_per_client"][0]
-        mode = parameters["benchmarks"][btype]["mode"]
-
+        instances = parameters.get('benchmarks').get(btype).get('volumes_per_client', 1)
+        mode = parameters.get('benchmarks').get(btype).get('mode', 'write')
     logger.info('Test Mode: %s', mode)
+
     ret_vals = {}
     for iteration in range(iterations):
         logger.info('Iteration: %d', iteration)
