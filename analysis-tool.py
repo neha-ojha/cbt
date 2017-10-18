@@ -41,12 +41,30 @@ def compare_parameters(btype, mode, mode1, test, baseline):
         params.extend(["read_bw", "read_avg_iops", "read_std_dev_iops",
                        "read_avg_lat", "read_std_dev_lat"])
 
+    # check for failure
     for key in params:
-        if test[key] < baseline[key] / 2:
-            ret = 1
-            logger.info('%s test failed', key)
-        else:
-            logger.info('%s test passed', key)
+        if key in ["bw", "avg_iops", "read_bw", "read_avg_iops"]:
+            if test[key] < baseline[key] / 2:
+                ret = 1
+                logger.info('%s test failed', key)
+            else:
+                logger.info('%s test passed', key)
+        if key in ["avg_lat", "std_dev_lat", "std_dev_bw", "std_dev_iops",
+                   "read_avg_lat", "read_std_dev_lat", "read_std_dev_iops"]:
+            if test[key] > 2 * baseline[key]:
+                ret = 1
+                logger.info('%s test failed', key)
+            else:
+                logger.info('%s test passed', key)
+
+    # check for improvements in avg bw, iops, lat
+    for key in params:
+        if key in ["bw", "avg_iops", "read_bw", "read_avg_iops"]:
+            if test[key] > 1.5 * baseline[key]:
+                logger.info('IMPROVEMENT: %s improved more than 1.5 times', key)
+        if key in ["avg_lat"]:
+            if test[key] < baseline[key] / 1.5:
+                logger.info('IMPROVEMENT: %s improved more than 1.5 times', key)
     return ret 
 
 def compare_with_baseline(btype, test_mode, fpath, baseline):
@@ -135,7 +153,7 @@ def main(argv):
             else:
                 mode = 'seq'
     elif btype == "librbdfio":
-        instances = parameters.get('benchmarks').get(btype).get('volumes_per_client', 1)
+        instances = parameters.get('benchmarks').get(btype).get('volumes_per_client', 1)[0]
         mode = parameters.get('benchmarks').get(btype).get('mode', 'write')
     logger.info('Test Mode: %s', mode)
 
