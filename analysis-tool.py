@@ -25,7 +25,7 @@ def generate_result_files(dir_path, clients, instances, mode, btype):
         raise Exception('Performance test failed: no result files found')
     return result_files
 
-def compare_parameters(btype, mode, mode1, test, baseline):
+def compare_parameters(btype, mode, mode1, test, baseline, threshold):
     ret = 0
     if btype == "librbdfio":
         params = ["bw", "avg_iops", "std_dev_iops", "avg_lat", "std_dev_lat"]
@@ -41,33 +41,17 @@ def compare_parameters(btype, mode, mode1, test, baseline):
         params.extend(["read_bw", "read_avg_iops", "read_std_dev_iops",
                        "read_avg_lat", "read_std_dev_lat"])
 
-    # check for failure
     for key in params:
-        if key in ["bw", "avg_iops", "read_bw", "read_avg_iops"]:
-            if test[key] < baseline[key] / 2:
-                ret = 1
-                logger.info('%s test failed', key)
-            else:
-                logger.info('%s test passed', key)
-        if key in ["avg_lat", "std_dev_lat", "std_dev_bw", "std_dev_iops",
-                   "read_avg_lat", "read_std_dev_lat", "read_std_dev_iops"]:
-            if test[key] > 2 * baseline[key]:
-                ret = 1
-                logger.info('%s test failed', key)
-            else:
-                logger.info('%s test passed', key)
+        # check for failure and improvement
+        if abs(test[key] - baseline[key]) / float(baseline[key]) > threshold:
+            ret = 1
+            logger.info('%s test failed', key)
+        else:
+            logger.info('%s test passed', key)
 
-    # check for improvements in avg bw, iops, lat
-    for key in params:
-        if key in ["bw", "avg_iops", "read_bw", "read_avg_iops"]:
-            if test[key] > 1.5 * baseline[key]:
-                logger.info('IMPROVEMENT: %s improved more than 1.5 times', key)
-        if key in ["avg_lat"]:
-            if test[key] < baseline[key] / 1.5:
-                logger.info('IMPROVEMENT: %s improved more than 1.5 times', key)
     return ret 
 
-def compare_with_baseline(btype, test_mode, fpath, baseline):
+def compare_with_baseline(btype, test_mode, fpath, baseline, threshold):
     ret = 0
     mode = ""
     mode1 = "" # only required for fio rw case
@@ -113,11 +97,11 @@ def compare_with_baseline(btype, test_mode, fpath, baseline):
 
     logger.info("Baseline values:\n    %s",
                  pprint.pformat(baseline).replace("\n", "\n    "))
-
+    logger.info("Threshold value: %s", threshold)
     logger.info("Test values:\n    %s",
                  pprint.pformat(test_result).replace("\n", "\n    "))
 
-    ret = compare_parameters(btype, mode, mode1, test_result, baseline)
+    ret = compare_parameters(btype, mode, mode1, test_result, baseline, threshold)
     return ret
 
 def main(argv):
@@ -156,7 +140,7 @@ def main(argv):
         instances = parameters.get('benchmarks').get(btype).get('volumes_per_client', 1)[0]
         mode = parameters.get('benchmarks').get(btype).get('mode', 'write')
     logger.info('Test Mode: %s', mode)
-
+    threshold = parameters.get('baseline').get('threshold', 0.5)
     ret_vals = {}
     for iteration in range(iterations):
         logger.info('Iteration: %d', iteration)
@@ -167,7 +151,7 @@ def main(argv):
             ret = 0
             logger.info('Running performance test on: %s', fname)
             fpath = os.path.join(cbt_dir_path, fname)
-            ret = compare_with_baseline(btype, mode, fpath, parameters["baseline"])
+            ret = compare_with_baseline(btype, mode, fpath, parameters["baseline"], threshold)
             if ret != 0:
                 failed_test.append(fname)
         ret_vals[iteration] = failed_test
