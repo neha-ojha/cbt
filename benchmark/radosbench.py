@@ -173,6 +173,9 @@ class Radosbench(Benchmark):
                 found = 0
                 out_file = '%s/output.%s.%s' % (out_dir, i, client)
                 json_out_file = '%s/json_output.%s.%s' % (out_dir, i, client)
+                if not os.path.exists(out_file):
+                    logger.exception('%s does not exist', out_file)
+                    return
                 with open(out_file) as fd:
                     for line in fd.readlines():
                         if found == 0:
