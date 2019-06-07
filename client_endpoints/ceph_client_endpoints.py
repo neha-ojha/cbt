@@ -26,9 +26,9 @@ class CephClientEndpoints(ClientEndpoints):
         # get the list of mons
         self.mon_addrs  = []
         mon_hosts = self.cluster.config.get('mons')
-        for mon_host, mons in mon_hosts.iteritems():
-            for mon, addr in mons.iteritems():
-                 self.mon_addrs.append(addr)
+        #for mon_host, mons in mon_hosts.iteritems():
+        #    for mon, addr in mons.iteritems():
+        #         self.mon_addrs.append(addr)
 
     def get_rbd_name(self, node, ep_num):
         node_part = node.rpartition("@")[2]
