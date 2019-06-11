@@ -28,7 +28,7 @@ class ClientEndpoints(object):
     def get_endpoints_per_client(self):
         return self.endpoints_per_client
 
-    def get_endpoint_size():
+    def get_endpoint_size(self):
         return self.endpoint_size
 
     def create(self):
