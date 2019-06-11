@@ -77,7 +77,7 @@ class Fio(Benchmark):
         aggregate_size = self.numjobs * self.procs_per_endpoint * self.size
         endpoint_size = self.client_endpoints_object.get_endpoint_size()
         if aggregate_size > endpoint_size:
-            raise ValueError("Aggregate fio data size (%dMB) exceeds end_point size (%dMB)! Please check numjobs, procs_per_endpoint, and size settings." % (aggregate_size, endpoint_size)
+            raise ValueError("Aggregate fio data size (%dMB) exceeds end_point size (%dMB)! Please check numjobs, procs_per_endpoint, and size settings." % (aggregate_size, endpoint_size))
 
         if self.endpoints_type == 'rbd' and self.ioengine != 'rbd':
             logger.warn('rbd endpoints must use the librbd fio engine! Setting ioengine=rbd')
