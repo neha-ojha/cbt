@@ -6,6 +6,7 @@ import os
 import time
 import uuid
 import threading
+import socket
 import logging
 
 from cluster import Cluster
@@ -273,6 +274,38 @@ class Ceph(Cluster):
         common.pdsh(nodes, 'sudo mv /etc/ceph/ceph.conf /etc/ceph/ceph.conf.cbt.bak').communicate()
         common.pdsh(nodes, 'sudo ln -s %s /etc/ceph/ceph.conf' % self.tmp_conf).communicate()
 
+    def get_mon_hosts(self):
+        # get the list of mons
+        mon_hosts  = {}
+        mons_config = settings.cluster.get('mons')
+        if isinstance(mons_config, str):
+            # hostname only so assume the default mon port of 6789
+            mon_addr = socket.gethostbyname(mons_config)
+            mon_hosts[mons_config] = {'a': '%s:6789' % mon_addr}
+        elif isinstance(mons_config, list):
+            # list of hostnames, so assume default mon port of 6789
+            mon_id = 'a'
+            for mon_host in mons_config:
+                mon_addr = socket.gethostbyname(mon_host)
+                mon_hosts[mon_host] = {mon_id: '%s:6789' % mon_addr}
+                if ord(mon_id) < ord('z'):
+                    mon_id = chr(ord(mon_id) + 1)
+                else:
+                    raise ValueError("CBT does not support 27+ monitors")
+        elif isinstance(mon_hosts, dict):
+            # dict that contains hostnames with a mon id / ip:port pair ala:
+            #
+            # hostname:
+            #   a: "127.0.0.1:6789"
+            for mon_host, mon_config in mons_config.iteritems():
+                mon_hosts[mon_host] = {}
+                for mon_id, addr in mon_config.iteritems():
+                     mon_hosts[mon_host][mon_id] = addr
+        else:
+            raise ValueError("Failed to parse monitor syntax: %r" % mon_hosts)
+        return mon_hosts
+
+
     def make_mons(self):
         # Build and distribute the keyring
         client_admin_dir = "%s/client.admin" % self.tmp_dir
@@ -288,7 +321,7 @@ class Ceph(Cluster):
         # Build the monmap, retrieve it, and distribute it
         mons = settings.getnodes('mons').split(',')
         cmd = 'monmaptool --create --clobber'
-        monhosts = settings.cluster.get('mons')
+        monhosts = self.get_mon_hosts()
         logger.info(monhosts)
         for monhost, mons in monhosts.iteritems():
            for mon, addr in mons.iteritems():
